@@ -47,8 +47,8 @@ table inet filter {
     ip daddr {{ subnet }} accept
     {% endfor %}
     {% if firewall_allow_wireguard_forward %}
-    iif "{{ wireguard_interface }}" oif "{{ firewall_lan_interface }}" accept
-    iif "{{ firewall_lan_interface }}" oif "{{ wireguard_interface }}" accept
+    iifname "{{ wireguard_interface }}" oifname "{{ firewall_lan_interface }}" accept
+    iifname "{{ firewall_lan_interface }}" oifname "{{ wireguard_interface }}" accept
     {% endif %}
   }
 

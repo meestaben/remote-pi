@@ -40,3 +40,27 @@
   become: true
   shell: sensors-detect --auto
   when: run_sensors_detect | bool
+
+- name: Configure tmpfs mounts to reduce SD card wear
+  ansible.posix.mount:
+    path: "{{ item.path }}"
+    src: tmpfs
+    fstype: tmpfs
+    opts: "defaults,noatime,nosuid,size={{ item.size }}"
+    state: mounted
+  loop: "{{ tmpfs_mounts }}"
+  when:
+    - tmpfs_enable | bool
+    - item.enabled | bool
+  become: true
+
+- name: Set tmpfs mount permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+    state: directory
+  loop: "{{ tmpfs_mounts }}"
+  when:
+    - tmpfs_enable | bool
+    - item.enabled | bool
+  become: true

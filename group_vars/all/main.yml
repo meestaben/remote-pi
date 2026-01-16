@@ -19,6 +19,22 @@ initial_packages:
 run_sensors_detect: true
 system_timezone: Etc/UTC
 
+# tmpfs configuration for reducing SD card wear
+tmpfs_enable: true
+tmpfs_mounts:
+  - path: /var/log
+    size: 64m
+    mode: '0755'
+    enabled: true
+  - path: /var/cache/apt
+    size: 100m
+    mode: '0755'
+    enabled: true
+  - path: /tmp
+    size: 256m
+    mode: '1777'
+    enabled: false
+
 wireguard_interface: wg0
 wireguard_address: 10.6.0.1/24
 wireguard_listen_port: 51975

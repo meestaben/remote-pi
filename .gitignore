@@ -13,6 +13,8 @@ group_vars/*/*.vault.yml
 # any locally generated keyfiles
 *.key
 
+.claude
+
 # OS cruft
 .DS_Store
 Thumbs.db

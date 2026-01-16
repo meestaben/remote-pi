@@ -1,0 +1,59 @@
+table inet filter {
+  chain input {
+    type filter hook input priority 0;
+    policy drop;
+
+    iif "lo" accept
+    ct state { established, related } accept
+    {% if firewall_allow_icmp %}
+    ip protocol icmp accept
+    ip6 nexthdr icmpv6 accept
+    {% endif %}
+
+    {% if firewall_allowed_tcp_ports %}
+    tcp dport { {{ firewall_allowed_tcp_ports | join(', ') }} } accept
+    {% endif %}
+    {% if firewall_allow_local_dns | default(false) and pihole_dns_port is defined %}
+    ip saddr 127.0.0.0/8 tcp dport {{ pihole_dns_port }} accept
+    ip6 saddr ::1 tcp dport {{ pihole_dns_port }} accept
+    {% endif %}
+    {% if firewall_allowed_tcp_ranges %}
+      {% for range in firewall_allowed_tcp_ranges %}
+    tcp dport {{ range }} accept
+      {% endfor %}
+    {% endif %}
+
+    {% if firewall_allowed_udp_ports %}
+    udp dport { {{ firewall_allowed_udp_ports | join(', ') }} } accept
+    {% endif %}
+    {% if firewall_allow_local_dns | default(false) and pihole_dns_port is defined %}
+    ip saddr 127.0.0.0/8 udp dport {{ pihole_dns_port }} accept
+    ip6 saddr ::1 udp dport {{ pihole_dns_port }} accept
+    {% endif %}
+    {% if firewall_allowed_udp_ranges %}
+      {% for range in firewall_allowed_udp_ranges %}
+    udp dport {{ range }} accept
+      {% endfor %}
+    {% endif %}
+  }
+
+  chain forward {
+    type filter hook forward priority 0;
+    policy drop;
+
+    ct state { established, related } accept
+    {% for subnet in firewall_docker_subnets | default([]) %}
+    ip saddr {{ subnet }} accept
+    ip daddr {{ subnet }} accept
+    {% endfor %}
+    {% if firewall_allow_wireguard_forward %}
+    iif "{{ wireguard_interface }}" oif "{{ firewall_lan_interface }}" accept
+    iif "{{ firewall_lan_interface }}" oif "{{ wireguard_interface }}" accept
+    {% endif %}
+  }
+
+  chain output {
+    type filter hook output priority 0;
+    policy accept;
+  }
+}

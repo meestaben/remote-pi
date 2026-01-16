@@ -1,0 +1,17 @@
+[Interface]
+Address = {{ peer.address }}
+PrivateKey = {{ peer.private_key }}
+{% if peer.dns is defined %}
+DNS = {% if peer.dns is string %}{{ peer.dns }}{% else %}{{ peer.dns | join(', ') }}{% endif %}
+{% endif %}
+
+[Peer]
+PublicKey = {{ wireguard_server_public_key }}
+Endpoint = {{ wireguard_endpoint_host }}:{{ wireguard_listen_port }}
+AllowedIPs = {{ (peer.client_allowed_ips | default(['0.0.0.0/0'])) | join(', ') }}
+{% if peer.preshared_key is defined %}
+PresharedKey = {{ peer.preshared_key }}
+{% endif %}
+{% if peer.persistent_keepalive is defined %}
+PersistentKeepalive = {{ peer.persistent_keepalive }}
+{% endif %}

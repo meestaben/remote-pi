@@ -1,0 +1,19 @@
+services:
+  filebrowser:
+    image: {{ filebrowser_image }}
+    container_name: filebrowser
+    restart: unless-stopped
+    user: "{{ filebrowser_uid }}:{{ filebrowser_gid }}"
+    ports:
+      - "{{ filebrowser_port }}:80"
+    environment:
+      PUID: "{{ filebrowser_uid }}"
+      PGID: "{{ filebrowser_gid }}"
+      TZ: "{{ system_timezone }}"
+    volumes:
+      - "{{ filebrowser_data_path }}:/srv"
+      - "{{ filebrowser_database_dir }}:/database"
+      - "{{ filebrowser_config_dir }}:/config"
+    command:
+      - --config
+      - /config/filebrowser.json

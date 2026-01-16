@@ -1,0 +1,42 @@
+- name: Update apt-get repo and cache
+  become: true
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Fix broken apt dependencies
+  become: true
+  ansible.builtin.command:
+    cmd: apt-get install -f -y
+  register: fix_broken_dependencies
+  changed_when: "'0 newly installed' not in fix_broken_dependencies.stdout"
+
+- name: Generate locale
+  become: true
+  ansible.builtin.command:
+    cmd: "locale-gen {{ default_locale }}"
+    creates: "/usr/lib/locale/{{ default_locale }}"
+
+- name: Set system locale
+  become: true
+  lineinfile:
+    path: /etc/default/locale
+    regexp: '^{{ item.key }}='
+    line: '{{ item.key }}={{ item.value }}'
+    create: yes
+  loop: "{{ locale_vars }}"
+
+- name: Upgrade all apt packages
+  become: true
+  apt: 
+    upgrade: dist
+
+- name: Install packages
+  become: true
+  apt:
+    pkg: "{{ initial_packages }}"
+
+- name: Setup sensors
+  become: true
+  shell: sensors-detect --auto
+  when: run_sensors_detect | bool

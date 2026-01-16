@@ -1,0 +1,76 @@
+- name: Install WireGuard packages
+  ansible.builtin.apt:
+    name:
+      - wireguard
+      - wireguard-tools
+      - qrencode
+    state: present
+    update_cache: true
+
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: true
+    state: present
+    reload: true
+  when: wireguard_enable_ipv4_forwarding | bool
+
+- name: Enable IPv6 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: "1"
+    sysctl_set: true
+    state: present
+    reload: true
+  when: wireguard_enable_ipv6_forwarding | bool
+
+- name: Ensure WireGuard directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop:
+    - /etc/wireguard
+    - "{{ wireguard_peers_path }}"
+
+- name: Deploy server WireGuard config
+  ansible.builtin.template:
+    src: ../templates/wg0.conf.j2
+    dest: "/etc/wireguard/{{ wireguard_interface }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  register: wireguard_server_config
+
+- name: Deploy peer profile configs
+  ansible.builtin.template:
+    src: ../templates/wireguard-peer.conf.j2
+    dest: "{{ wireguard_peers_path }}/{{ item.name }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ wireguard_peer_profiles }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.private_key is defined
+  vars:
+    peer: "{{ item }}"
+
+- name: Enable WireGuard interface service
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ wireguard_interface }}"
+    enabled: true
+
+- name: Ensure WireGuard interface is up
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ wireguard_interface }}"
+    state: started
+
+- name: Reload WireGuard interface if configuration changed
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ wireguard_interface }}"
+    state: restarted
+  when: wireguard_server_config.changed

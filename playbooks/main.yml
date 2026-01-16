@@ -1,0 +1,33 @@
+- name: Configure Raspberry Pi services
+  hosts: all
+  become: true
+  tasks:
+    - name: Initial setup
+      ansible.builtin.include_tasks:
+        file: ../tasks/initial_setup.yml
+        apply:
+          tags: [initial_setup]
+      tags: [initial_setup]
+
+    - name: Configure firewall
+      ansible.builtin.include_tasks:
+        file: ../tasks/firewall.yml
+        apply:
+          tags: [firewall]
+      tags: [firewall, apps]
+      
+    - name: Configure WireGuard
+      ansible.builtin.include_tasks:
+        file: ../tasks/wireguard.yml
+        apply:
+          tags: [wireguard]
+      tags: [wireguard, apps]
+
+    - name: Configure Docker services
+      ansible.builtin.include_tasks:
+        file: ../tasks/docker.yml
+        apply:
+          tags: [docker]
+      tags: [docker, apps]
+
+

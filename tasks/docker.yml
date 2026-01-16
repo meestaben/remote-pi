@@ -1,0 +1,202 @@
+- name: Validate FTP secret inputs
+  ansible.builtin.assert:
+    that:
+      - ftp_users_env is defined
+      - ftp_users_env | length > 0
+    fail_msg: "Define ftp_users_env in group_vars/all/vault.yml (format: user|password|/home/user;...)"
+  when: docker_install | bool
+
+- name: Validate Pi-hole secret inputs
+  ansible.builtin.assert:
+    that:
+      - pihole_admin_password is defined
+      - pihole_admin_password | length > 0
+    fail_msg: "Define pihole_admin_password in group_vars/all/vault.yml"
+  when:
+    - docker_install | bool
+    - pihole_enable | default(false) | bool
+
+- name: Install Docker repository prerequisites
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: true
+  when: docker_install | bool
+
+- name: Ensure apt keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: docker_install | bool
+
+- name: Install Docker apt key
+  ansible.builtin.get_url:
+    url: "{{ docker_repo_url }}/gpg"
+    dest: /etc/apt/keyrings/docker.gpg
+    mode: "0644"
+  when: docker_install | bool
+
+- name: Configure Docker apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/docker.gpg] {{ docker_repo_url }} {{ docker_repo_distribution }} stable"
+    filename: docker
+    state: present
+  when: docker_install | bool
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name: "{{ docker_packages }}"
+    state: present
+    update_cache: true
+  when: docker_install | bool
+
+- name: Ensure docker group exists
+  ansible.builtin.group:
+    name: docker
+    state: present
+  when: docker_install | bool
+
+- name: Add users to docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: true
+  loop: "{{ docker_users | default([]) }}"
+  when:
+    - docker_install | bool
+    - docker_users is defined
+    - docker_users | length > 0
+
+- name: Ensure Docker service is enabled
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+  when: docker_install | bool
+
+- name: Ensure Docker directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ docker_compose_base_dir }}", owner: "root", group: "root", mode: "0755" }
+    - { path: "{{ cctv_storage_path }}", owner: "root", group: "root", mode: "0755" }
+    - { path: "{{ ftp_data_path }}", owner: "root", group: "root", mode: "0755" }
+    - { path: "{{ ftp_config_dir }}", owner: "root", group: "root", mode: "0755" }
+    - { path: "{{ filebrowser_data_path }}", owner: "{{ filebrowser_uid }}", group: "{{ filebrowser_gid }}", mode: "0775" }
+    - { path: "{{ filebrowser_config_dir }}", owner: "{{ filebrowser_uid }}", group: "{{ filebrowser_gid }}", mode: "0775" }
+    - { path: "{{ filebrowser_database_dir }}", owner: "{{ filebrowser_uid }}", group: "{{ filebrowser_gid }}", mode: "0775" }
+  when: docker_install | bool
+
+- name: Ensure Filebrowser directory ownership is correct
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: true
+    owner: "{{ filebrowser_uid }}"
+    group: "{{ filebrowser_gid }}"
+  loop:
+    - "{{ filebrowser_config_dir }}"
+    - "{{ filebrowser_database_dir }}"
+    - "{{ filebrowser_data_path }}"
+  when: docker_install | bool
+
+- name: Ensure Pi-hole config directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ pihole_uid }}"
+    group: "{{ pihole_gid }}"
+    mode: "0755"
+  loop:
+    - "{{ pihole_config_dir }}"
+    - "{{ pihole_etc_dir }}"
+    - "{{ pihole_dnsmasq_dir }}"
+  when:
+    - docker_install | bool
+    - pihole_enable | default(false) | bool
+
+- name: Ensure Pi-hole directory ownership is correct
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: true
+    owner: "{{ pihole_uid }}"
+    group: "{{ pihole_gid }}"
+  loop:
+    - "{{ pihole_etc_dir }}"
+    - "{{ pihole_dnsmasq_dir }}"
+  when:
+    - docker_install | bool
+    - pihole_enable | default(false) | bool
+
+- name: Ensure compose project directories exist
+  ansible.builtin.file:
+    path: "{{ docker_compose_base_dir }}/{{ item.name }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ docker_compose_projects }}"
+  when:
+    - docker_install | bool
+    - docker_compose_projects is defined
+    - item.name != 'pihole' or pihole_enable | default(false) | bool
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Deploy FTP server config
+  ansible.builtin.template:
+    src: ../templates/docker/ftp/vsftpd.conf.j2
+    dest: "{{ ftp_config_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: docker_install | bool
+
+- name: Deploy Filebrowser config
+  ansible.builtin.template:
+    src: ../templates/docker/filebrowser/config.json.j2
+    dest: "{{ filebrowser_config_file }}"
+    owner: "{{ filebrowser_uid }}"
+    group: "{{ filebrowser_gid }}"
+    mode: "0644"
+  when: docker_install | bool
+
+- name: Deploy Docker Compose files
+  ansible.builtin.template:
+    src: "../templates/{{ item.template }}"
+    dest: "{{ docker_compose_base_dir }}/{{ item.name }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ docker_compose_projects }}"
+  when:
+    - docker_install | bool
+    - docker_compose_projects is defined
+    - item.name != 'pihole' or pihole_enable | default(false) | bool
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ensure Docker Compose projects are running
+  community.docker.docker_compose_v2:
+    project_src: "{{ docker_compose_base_dir }}/{{ item.name }}"
+    state: present
+    pull: missing
+  loop: "{{ docker_compose_projects }}"
+  when:
+    - docker_install | bool
+    - docker_compose_projects is defined
+    - item.name != 'pihole' or pihole_enable | default(false) | bool
+  loop_control:
+    label: "{{ item.name }}"

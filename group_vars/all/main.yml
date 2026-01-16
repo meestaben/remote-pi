@@ -1,0 +1,121 @@
+ansible_user: pi
+
+default_locale: en_US.UTF-8
+locale_vars:
+  - { key: "LANG", value: "{{ default_locale }}" }
+  - { key: "LC_ALL", value: "{{ default_locale }}" }
+  - { key: "LANGUAGE", value: "{{ default_locale }}" }
+
+initial_packages:
+  - git
+  - sqlite3
+  - fuse-overlayfs
+  - open-iscsi
+  - lm-sensors
+  - hardening-runtime
+  - iptables
+  - nftables
+
+run_sensors_detect: true
+system_timezone: Etc/UTC
+
+wireguard_interface: wg0
+wireguard_address: 10.6.0.1/24
+wireguard_listen_port: 51975
+wireguard_endpoint_host: sh.ausden.net
+wireguard_enable_ipv4_forwarding: true
+wireguard_enable_ipv6_forwarding: false
+wireguard_peers_path: /etc/wireguard/peers
+wireguard_post_up:
+  - iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+  - iptables -A FORWARD -i eth0 -o {{ wireguard_interface }} -j ACCEPT
+  - iptables -A FORWARD -i {{ wireguard_interface }} -j ACCEPT
+wireguard_post_down:
+  - iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+  - iptables -D FORWARD -i eth0 -o {{ wireguard_interface }} -j ACCEPT
+  - iptables -D FORWARD -i {{ wireguard_interface }} -j ACCEPT
+# see vault.yml for server/client keys and wg profiles
+
+firewall_enable: true
+firewall_lan_interface: eth0
+firewall_allowed_tcp_ports:
+  - 22
+  - "{{ ftp_control_port }}"
+  - "{{ filebrowser_port }}"
+  - "{{ pihole_dns_port }}"
+  - "{{ pihole_web_port }}"
+firewall_allowed_tcp_ranges:
+  - "{{ ftp_pasv_start }}-{{ ftp_pasv_end }}"
+firewall_allowed_udp_ports:
+  - "{{ wireguard_listen_port }}"
+  - "{{ pihole_dns_port }}"
+firewall_allowed_udp_ranges: []
+firewall_allow_local_dns: true
+firewall_allow_icmp: true
+firewall_allow_wireguard_forward: true
+firewall_docker_subnets:
+  - 172.17.0.0/16
+  - 172.18.0.0/16
+  - 172.19.0.0/16
+  - 172.20.0.0/16
+
+docker_install: true
+docker_users:
+  - "{{ ansible_user }}"
+docker_compose_base_dir: /opt/docker
+cctv_storage_path: /srv/cctv
+ftp_data_path: "{{ cctv_storage_path }}/filebrowser"
+ftp_config_dir: "{{ docker_compose_base_dir }}/ftp/config"
+ftp_config_file: "{{ ftp_config_dir }}/vsftpd.conf"
+filebrowser_data_path: "{{ cctv_storage_path }}/filebrowser"
+filebrowser_config_dir: "{{ docker_compose_base_dir }}/filebrowser/config"
+filebrowser_config_file: "{{ filebrowser_config_dir }}/filebrowser.json"
+filebrowser_database_dir: "{{ docker_compose_base_dir }}/filebrowser/database"
+docker_repo_url: https://download.docker.com/linux/debian
+docker_repo_distribution: "{{ ansible_distribution_release | default('trixie') }}"
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+ftp_image: delfer/alpine-ftp-server:latest
+ftp_control_port: 21
+ftp_pasv_start: 30000
+ftp_pasv_end: 30009
+ftp_pasv_address: "{{ ansible_default_ipv4.address | default('') }}"
+ftp_banner: "CCTV upload"
+ftp_vsftpd_extra_options: []
+filebrowser_image: filebrowser/filebrowser:v2
+filebrowser_port: 8080
+filebrowser_base_url: ""
+filebrowser_log_output: stdout
+filebrowser_uid: 1000
+filebrowser_gid: 1000
+
+pihole_enable: true
+pihole_image: pihole/pihole:latest
+pihole_dns_port: 53
+pihole_web_port: 8082
+pihole_uid: 1000
+pihole_gid: 1000
+pihole_dns_listening_mode: ALL
+pihole_enable_dnsmasq_dir: false
+pihole_dns_servers:
+  - 1.1.1.3
+  - 1.0.0.3
+pihole_server_ip: "{{ ansible_default_ipv4.address | default('192.168.1.2') }}"
+pihole_ipv6_address: "{{ ansible_default_ipv6.address | default('') }}"
+pihole_timezone: "{{ system_timezone }}"
+pihole_config_dir: "{{ docker_compose_base_dir }}/pihole/config"
+pihole_etc_dir: "{{ pihole_config_dir }}/etc-pihole"
+pihole_dnsmasq_dir: "{{ pihole_config_dir }}/dnsmasq.d"
+pihole_env_extra: []
+
+docker_compose_projects:
+  - name: ftp
+    template: docker/ftp/docker-compose.yml.j2
+  - name: filebrowser
+    template: docker/filebrowser/docker-compose.yml.j2
+  - name: pihole
+    template: docker/pihole/docker-compose.yml.j2

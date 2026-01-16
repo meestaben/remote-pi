@@ -1,0 +1,28 @@
+[Interface]
+Address = {{ wireguard_address }}
+ListenPort = {{ wireguard_listen_port }}
+PrivateKey = {{ wireguard_server_private_key }}
+SaveConfig = false
+{% if wireguard_post_up %}
+{% for command in wireguard_post_up %}
+PostUp = {{ command }}
+{% endfor %}
+{% endif %}
+{% if wireguard_post_down %}
+{% for command in wireguard_post_down %}
+PostDown = {{ command }}
+{% endfor %}
+{% endif %}
+
+{% for peer in wireguard_peer_profiles %}
+[Peer]
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ (peer.allowed_ips | default([peer.address])) | join(', ') }}
+{% if peer.preshared_key is defined %}
+PresharedKey = {{ peer.preshared_key }}
+{% endif %}
+{% if peer.persistent_keepalive is defined %}
+PersistentKeepalive = {{ peer.persistent_keepalive }}
+{% endif %}
+
+{% endfor %}

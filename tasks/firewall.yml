@@ -1,0 +1,34 @@
+- name: Install firewall tooling
+  ansible.builtin.apt:
+    name: nftables
+    state: present
+    update_cache: true
+  when: firewall_enable | bool
+
+- name: Deploy nftables ruleset
+  ansible.builtin.template:
+    src: ../templates/nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: firewall_config
+  when: firewall_enable | bool
+
+- name: Ensure nftables service is enabled
+  ansible.builtin.systemd:
+    name: nftables
+    enabled: true
+    masked: false
+    state: started
+  when: firewall_enable | bool
+
+- name: Reload nftables rules
+  ansible.builtin.shell: |
+    set -euo pipefail
+    (nft list table inet filter >/dev/null 2>&1 && nft delete table inet filter) || true
+    nft -f /etc/nftables.conf
+  when:
+    - firewall_enable | bool
+    - firewall_config is defined
+    - firewall_config.changed

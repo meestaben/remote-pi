@@ -1,0 +1,24 @@
+# Copy to group_vars/all/vault.yml and encrypt with ansible-vault.
+# Values below are placeholders—replace with real secrets before running playbooks.
+
+wireguard_server_private_key: "SERVER_PRIVATE_KEY_BASE64"
+wireguard_server_public_key: "SERVER_PUBLIC_KEY_BASE64"
+wireguard_peer_profiles:
+  - name: home-user
+    address: 10.6.0.2/32
+    private_key: "PEER_PRIVATE_KEY_BASE64"
+    public_key: "PEER_PUBLIC_KEY_BASE64"
+    allowed_ips:
+      - 10.6.0.2/32
+    client_allowed_ips:
+      - 0.0.0.0/0
+      - ::/0
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    persistent_keepalive: 25
+
+# FTP users string format: user|password|/home/user;user2|password2|/home/user2
+ftp_users_env: "camera|ChangeMe!|/home/camera"
+pihole_admin_password: "ChangeMePihole!"
+

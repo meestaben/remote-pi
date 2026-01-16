@@ -1,0 +1,18 @@
+# Ansible artifacts
+.ansible/
+collections/
+*.retry
+inventory.ini
+
+# Secrets / vault password helpers
+.vaultpw
+group_vars/*/vault.yml
+group_vars/*/vault.yaml
+group_vars/*/*.vault.yml
+
+# any locally generated keyfiles
+*.key
+
+# OS cruft
+.DS_Store
+Thumbs.db

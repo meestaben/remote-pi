@@ -1,0 +1,26 @@
+listen=YES
+listen_ipv6=NO
+anonymous_enable=NO
+local_enable=YES
+write_enable=YES
+local_umask=022
+dirmessage_enable=YES
+use_localtime=YES
+xferlog_enable=YES
+connect_from_port_20=YES
+chroot_local_user=YES
+allow_writeable_chroot=YES
+seccomp_sandbox=NO
+pasv_enable=YES
+pasv_min_port={{ ftp_pasv_start }}
+pasv_max_port={{ ftp_pasv_end }}
+pasv_address={{ ftp_pasv_address }}
+local_root=/home
+user_sub_token=$USER
+ftpd_banner={{ ftp_banner }}
+
+{% if ftp_vsftpd_extra_options %}
+{% for line in ftp_vsftpd_extra_options %}
+{{ line }}
+{% endfor %}
+{% endif %}

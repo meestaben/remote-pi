@@ -1,0 +1,36 @@
+services:
+  pihole:
+    container_name: pihole
+    image: "{{ pihole_image }}"
+    restart: unless-stopped
+    cap_add:
+      - SYS_TIME
+    hostname: pihole
+    environment:
+      TZ: "{{ pihole_timezone }}"
+      FTLCONF_webserver_api_password: "{{ pihole_admin_password }}"
+      FTLCONF_dns_upstreams: "{{ pihole_dns_servers | join(';') }}"
+      FTLCONF_dns_listeningMode: "{{ pihole_dns_listening_mode }}"
+      FTLCONF_LOCAL_IPV4: "{{ pihole_server_ip }}"
+      PIHOLE_UID: "{{ pihole_uid }}"
+      PIHOLE_GID: "{{ pihole_gid }}"
+{%- if pihole_ipv6_address %}
+      FTLCONF_LOCAL_IPV6: "{{ pihole_ipv6_address }}"
+{% endif %}
+{%- for extra in pihole_env_extra | default([]) %}
+      {{ extra.key }}: "{{ extra.value }}"
+{% endfor %}
+    
+    ports:
+      - "{{ pihole_dns_port }}:53/tcp"
+      - "{{ pihole_dns_port }}:53/udp"
+      - "{{ pihole_web_port }}:80/tcp"
+    volumes:
+      - "{{ pihole_etc_dir }}:/etc/pihole"
+{% if pihole_enable_dnsmasq_dir | default(false) %}
+      - "{{ pihole_dnsmasq_dir }}:/etc/dnsmasq.d"
+{% endif %}
+    dns:
+{% for dns in pihole_dns_servers %}
+      - {{ dns }}
+{% endfor %}

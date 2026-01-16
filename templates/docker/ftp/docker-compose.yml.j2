@@ -1,0 +1,19 @@
+services:
+  ftp:
+    image: {{ ftp_image }}
+    container_name: ftp
+    restart: unless-stopped
+    environment:
+      USERS: "{{ ftp_users_env }}"
+      ADDRESS: "{{ ftp_pasv_address }}"
+      MIN_PORT: "{{ ftp_pasv_start }}"
+      MAX_PORT: "{{ ftp_pasv_end }}"
+      LOG_STDOUT: "true"
+      FTP_PASSIVE_MODE: "YES"
+      TZ: "{{ system_timezone }}"
+    ports:
+      - "{{ ftp_control_port }}:21"
+      - "{{ ftp_pasv_start }}-{{ ftp_pasv_end }}:{{ ftp_pasv_start }}-{{ ftp_pasv_end }}"
+    volumes:
+      - "{{ ftp_data_path }}:/home"
+      - "{{ ftp_config_file }}:/etc/vsftpd/vsftpd.conf:ro"

@@ -13,7 +13,10 @@ group_vars/*/*.vault.yml
 # any locally generated keyfiles
 *.key
 
+# exclude any AI nonsense
 .claude
+CLAUDE.md
+AGENTS.md
 
 # OS cruft
 .DS_Store

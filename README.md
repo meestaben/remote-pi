@@ -64,6 +64,8 @@ Targeted reruns using tags:
 - WireGuard config only: `--tags wireguard`
 - All “app” layers (firewall + WireGuard): `--tags apps`
 
+Locales come from `default_locale`/`locale_vars` in `group_vars/all/main.yml`; if you still see `setlocale` warnings on login, rerun `ansible-playbook ... --tags initial_setup` so the `locale-gen` + `update-locale` steps apply with your latest values.
+
 ## Docker apps
 
 - Compose files live under `/opt/docker/<service>/docker-compose.yml` (rendered from `templates/docker/...`).
@@ -72,6 +74,7 @@ Targeted reruns using tags:
 - FTP configuration lives on the host at `/opt/docker/ftp/config/vsftpd.conf`. Edit that file (or override `ftp_vsftpd_extra_options`) and rerun `ansible-playbook ... --tags docker` to push updates.
 - Filebrowser (`filebrowser/filebrowser`) serves `/srv/cctv/filebrowser` on port 8080. Log in with the default `admin/admin` the first time, then create proper users from the UI.
 - Filebrowser configuration resides at `/opt/docker/filebrowser/config/filebrowser.json`; adjust it (port, branding, etc.) and rerun the docker tag to restart the container. Database files stay in `/opt/docker/filebrowser/database`.
+- Uptime Kuma (`louislam/uptime-kuma`) exposes its UI/API on `uptime_kuma_port` (default 3001) and persists data under `/opt/docker/uptime-kuma/data`. Toggle it with `uptime_kuma_enable` and rerun `ansible-playbook ... --tags docker` after changing monitors or other host mappings.
 - Pi-hole (`pihole/pihole`) listens on TCP/UDP 53 (DNS) and exposes its admin UI on `pihole_web_port` (default 8081). Config/state live under `/opt/docker/pihole/config` (`etc-pihole` + optional `dnsmasq.d`). The playbook populates upstream DNS servers with Cloudflare’s family-safe endpoints (1.1.1.3/1.0.0.3) by default; override `pihole_dns_servers` / `pihole_dns_listening_mode` as needed. Pi-hole runs as `pihole_uid`/`pihole_gid` (defaults 1000); adjust those vars if you need a different host user and rerun the docker tag so ownership is fixed. DHCP mode is disabled entirely.
 - Each compose stack uses Docker's default bridge network; if you add additional custom networks make sure their subnets are listed in `firewall_docker_subnets` and rerun `ansible-playbook ... --tags firewall`.
 - Docker bridge networks are permitted outbound via `firewall_docker_subnets` (defaults `172.17.0.0/16`, `172.18.0.0/16`). Add any additional container subnets there and rerun `ansible-playbook ... --tags firewall` if your stacks use other bridges.

@@ -96,6 +96,7 @@
     - { path: "{{ filebrowser_data_path }}", owner: "{{ filebrowser_uid }}", group: "{{ filebrowser_gid }}", mode: "0775" }
     - { path: "{{ filebrowser_config_dir }}", owner: "{{ filebrowser_uid }}", group: "{{ filebrowser_gid }}", mode: "0775" }
     - { path: "{{ filebrowser_database_dir }}", owner: "{{ filebrowser_uid }}", group: "{{ filebrowser_gid }}", mode: "0775" }
+    - { path: "{{ uptime_kuma_data_dir }}", owner: "root", group: "root", mode: "0755" }
   when: docker_install | bool
 
 - name: Ensure Filebrowser directory ownership is correct
@@ -151,7 +152,7 @@
   when:
     - docker_install | bool
     - docker_compose_projects is defined
-    - item.name != 'pihole' or pihole_enable | default(false) | bool
+    - item.enabled | default(true) | bool
   loop_control:
     label: "{{ item.name }}"
 
@@ -184,7 +185,7 @@
   when:
     - docker_install | bool
     - docker_compose_projects is defined
-    - item.name != 'pihole' or pihole_enable | default(false) | bool
+    - item.enabled | default(true) | bool
   loop_control:
     label: "{{ item.name }}"
 
@@ -197,6 +198,6 @@
   when:
     - docker_install | bool
     - docker_compose_projects is defined
-    - item.name != 'pihole' or pihole_enable | default(false) | bool
+    - item.enabled | default(true) | bool
   loop_control:
     label: "{{ item.name }}"

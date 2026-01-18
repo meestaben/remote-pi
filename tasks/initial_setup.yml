@@ -11,11 +11,19 @@
   register: fix_broken_dependencies
   changed_when: "'0 newly installed' not in fix_broken_dependencies.stdout"
 
+- name: Ensure default locale is enabled in locale.gen
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/locale.gen
+    regexp: '^#?\s*{{ default_locale | regex_escape() }}\s+UTF-8'
+    line: "{{ default_locale }} UTF-8"
+    state: present
+
 - name: Generate locale
   become: true
   ansible.builtin.command:
     cmd: "locale-gen {{ default_locale }}"
-    creates: "/usr/lib/locale/{{ default_locale }}"
+    creates: "/usr/lib/locale/{{ default_locale | regex_replace('UTF-8', 'utf8') }}"
 
 - name: Set system locale
   become: true
@@ -25,6 +33,15 @@
     line: '{{ item.key }}={{ item.value }}'
     create: yes
   loop: "{{ locale_vars }}"
+
+- name: Update locale environment
+  become: true
+  ansible.builtin.command:
+    cmd: >-
+      update-locale
+      {% for item in locale_vars %}
+      {{ item.key }}={{ item.value }}
+      {% endfor %}
 
 - name: Upgrade all apt packages
   become: true

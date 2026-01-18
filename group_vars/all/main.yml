@@ -4,9 +4,12 @@ default_locale: en_US.UTF-8
 locale_vars:
   - { key: "LANG", value: "{{ default_locale }}" }
   - { key: "LC_ALL", value: "{{ default_locale }}" }
+  - { key: "LC_CTYPE", value: "{{ default_locale }}" }
+  - { key: "LC_COLLATE", value: "{{ default_locale }}" }
   - { key: "LANGUAGE", value: "{{ default_locale }}" }
 
 initial_packages:
+  - locales
   - git
   - sqlite3
   - fuse-overlayfs
@@ -29,7 +32,7 @@ tmpfs_mounts:
   - path: /var/cache/apt
     size: 100m
     mode: '0755'
-    enabled: true
+    enabled: false
   - path: /tmp
     size: 256m
     mode: '1777'
@@ -58,6 +61,7 @@ firewall_allowed_tcp_ports:
   - 22
   - "{{ ftp_control_port }}"
   - "{{ filebrowser_port }}"
+  - "{{ uptime_kuma_port }}"
   - "{{ pihole_dns_port }}"
   - "{{ pihole_web_port }}"
 firewall_allowed_tcp_ranges:
@@ -70,10 +74,7 @@ firewall_allow_local_dns: true
 firewall_allow_icmp: true
 firewall_allow_wireguard_forward: true
 firewall_docker_subnets:
-  - 172.17.0.0/16
-  - 172.18.0.0/16
-  - 172.19.0.0/16
-  - 172.20.0.0/16
+  - 172.16.0.0/12  # Covers all default Docker bridge networks (172.16-172.31)
 
 docker_install: true
 docker_users:
@@ -109,6 +110,11 @@ filebrowser_log_output: stdout
 filebrowser_uid: 1000
 filebrowser_gid: 1000
 
+uptime_kuma_enable: true
+uptime_kuma_image: louislam/uptime-kuma:beta-slim
+uptime_kuma_port: 3001
+uptime_kuma_data_dir: "{{ docker_compose_base_dir }}/uptime-kuma/data"
+
 pihole_enable: true
 pihole_image: pihole/pihole:latest
 pihole_dns_port: 53
@@ -135,3 +141,7 @@ docker_compose_projects:
     template: docker/filebrowser/docker-compose.yml.j2
   - name: pihole
     template: docker/pihole/docker-compose.yml.j2
+    enabled: "{{ pihole_enable | default(false) | bool }}"
+  - name: uptime-kuma
+    template: docker/uptime-kuma/docker-compose.yml.j2
+    enabled: "{{ uptime_kuma_enable | default(false) | bool }}"
